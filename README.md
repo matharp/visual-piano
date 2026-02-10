@@ -1,5 +1,5 @@
 # Visual Piano
-# Built by Pratham using Codex
+## Built by Pratham using Codex
 
 A Synthesia-style MIDI practice app. Load a `.mid` file, watch note fall visualization aligned to an 88-key keyboard, and practice with loop tools.
 
