@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visual Piano</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='6' width='52' height='52' rx='12' fill='%230f1420'/%3E%3Crect x='12' y='30' width='40' height='20' rx='3.5' fill='%23f5f5f5'/%3E%3Crect x='18' y='30' width='6' height='12' fill='%23151515'/%3E%3Crect x='28' y='30' width='6' height='12' fill='%23151515'/%3E%3Crect x='38' y='30' width='6' height='12' fill='%23151515'/%3E%3Ccircle cx='20' cy='22' r='2.5' fill='%234a7dff'/%3E%3Ccircle cx='32' cy='18' r='2.5' fill='%23ff7a00'/%3E%3Ccircle cx='44' cy='22' r='2.5' fill='%2300e5ff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <header>
+    <div class="title-block">
+      <span class="app-icon" aria-hidden="true">
+        <svg viewBox="0 0 64 64" role="img" aria-label="Visual Piano">
+          <rect x="6" y="6" width="52" height="52" rx="12" fill="#0f1420" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+          <rect x="12" y="30" width="40" height="20" rx="3.5" fill="#f5f5f5" stroke="#d4d4d4" stroke-width="1"/>
+          <rect x="18" y="30" width="6" height="12" fill="#151515"/>
+          <rect x="28" y="30" width="6" height="12" fill="#151515"/>
+          <rect x="38" y="30" width="6" height="12" fill="#151515"/>
+          <rect x="12" y="46" width="40" height="4" fill="#e5e5e5"/>
+          <circle cx="20" cy="22" r="2.5" fill="#4a7dff"/>
+          <circle cx="32" cy="18" r="2.5" fill="#ff7a00"/>
+          <circle cx="44" cy="22" r="2.5" fill="#00e5ff"/>
+        </svg>
+      </span>
+      <h1>Visual Piano</h1>
+    </div>
+    <div id="center-meta" class="hidden">
+      <div id="song-title"></div>
+      <div id="meta-row">
+        <span id="tempo-readout"></span>
+        <button id="key-toggle" type="button" class="key-pill" aria-label="Toggle key highlight"></button>
+      </div>
+    </div>
+    <div id="top-controls"></div>
+  </header>
+
+  <main>
+    <section id="highway">
+      <canvas id="note-canvas"></canvas>
+      <div id="hit-line"></div>
+      <div id="toast">Ready.</div>
+    </section>
+
+    <section id="keyboard-shell">
+      <div id="keyboard">
+        <div id="white-keys"></div>
+        <div id="black-keys"></div>
+      </div>
+    </section>
+
+    <div id="controls-bar">
+      <div class="transport">
+        <label class="slider-group seek-group">
+          <div class="seek-row">
+            <div class="seek-buttons">
+              <button id="mark-loop" class="mini-btn" disabled aria-label="Add mark">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l3 6 6 .9-4.5 4.4 1.1 6.2L12 18l-5.6 3.5 1.1-6.2L3 10.9 9 10z"/></svg>
+              </button>
+              <button id="jump-mark" class="mini-btn" disabled aria-label="Jump to next mark">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h10l-4-4 1.4-1.4L18.8 12l-6.4 6.4L11 17l4-4H5z"/></svg>
+              </button>
+              <button id="loop-toggle" class="mini-btn" disabled aria-label="Toggle loop">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10a4 4 0 0 1 4 4v1h-2v-1a2 2 0 0 0-2-2H7V7zm0 10a4 4 0 0 1-4-4v-1h2v1a2 2 0 0 0 2 2h10v2H7zM6 5l2.5 2L6 9V5zm12 10l-2.5-2L18 11v4z"/></svg>
+              </button>
+            </div>
+            <div class="seek-wrap">
+              <input id="progress" type="range" min="0" max="1" step="0.001" value="0" aria-label="Seek" />
+              <div id="seek-marks" aria-hidden="true"></div>
+            </div>
+            <div id="loop-readout" class="hidden" aria-label="Loop range">
+              <input id="loop-start-input" class="loop-time-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Loop start time" />
+              <span class="loop-time-sep">-</span>
+              <input id="loop-end-input" class="loop-time-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="Loop end time" />
+            </div>
+            <div class="time-metro">
+              <span id="time-readout" class="time-pill">0:00 / 0:00</span>
+              <div id="metronome-indicator" title="Beat"></div>
+            </div>
+          </div>
+        </label>
+      </div>
+      <div class="transport-center">
+        <button id="hand-mode-btn" class="icon-btn" disabled aria-label="Hands: both" title="Hands: both">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17 12.2V8.5a1.5 1.5 0 1 1 3 0v5.9c0 2.37-1.6 4.45-3.88 5.06l-4.42 1.18a3.5 3.5 0 0 1-4.29-2.47l-.64-2.38a3.4 3.4 0 0 1 2.4-4.16l2.43-.65a1 1 0 0 1 1.25.71l.22.83.16-.04a1.6 1.6 0 0 1 1.98 1.13l.07.27.18-.05a1.6 1.6 0 0 1 1.98 1.13zM8 12.2V8.5a1.5 1.5 0 1 0-3 0v5.9c0 2.37 1.6 4.45 3.88 5.06l4.42 1.18a3.5 3.5 0 0 0 4.29-2.47l.64-2.38a3.4 3.4 0 0 0-2.4-4.16l-2.43-.65a1 1 0 0 0-1.25.71l-.22.83-.16-.04a1.6 1.6 0 0 0-1.98 1.13l-.07.27-.18-.05a1.6 1.6 0 0 0-1.98 1.13z"></path>
+          </svg>
+        </button>
+        <button id="play-btn" class="icon-btn" disabled aria-label="Play or pause">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+        </button>
+        <button id="stop-btn" class="icon-btn" disabled aria-label="Stop">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>
+        </button>
+        <label class="icon-btn file-icon" for="file-input" aria-label="Load MIDI">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h6l2 2h10a1 1 0 0 1 1 1v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1zm1 4h16v7H4v-7z"/></svg>
+          <input id="file-input" type="file" accept=".mid,.midi" />
+        </label>
+        <label class="icon-btn instrument-btn" aria-label="Instrument">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3V6zm0 3h18v11H3V9zm2 2v7h2v-7H5zm4 0v7h2v-7H9zm4 0v7h2v-7h-2zm4 0v7h2v-7h-2zM6 6V4h2v2H6zm4 0V4h2v2h-2zm4 0V4h2v2h-2zm4 0V4h2v2h-2z"/></svg>
+          <select id="sound-select" disabled>
+            <option value="bright">Bright</option>
+            <option value="warm">Warm</option>
+            <option value="electric">Electric</option>
+            <option value="plucked">Plucked</option>
+            <option value="synth">Synth</option>
+            <option value="harpsichord">Harpsichord</option>
+            <option value="steelpan">Steel Pan</option>
+            <option value="am">AM Synth</option>
+            <option value="fm">FM Synth</option>
+            <option value="duo">Duo Synth</option>
+            <option value="mono">Mono Synth</option>
+            <option value="membrane">Membrane</option>
+            <option value="organ">Organ</option>
+          </select>
+        </label>
+        <button id="palette-btn" class="icon-btn" disabled aria-label="Change color palette">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c-5 0-9 3.58-9 8 0 2.39 1.33 4.56 3.5 5.95.4.26.5.8.24 1.2-.5.76-.74 1.7-.74 2.85 0 1.98 1.57 3.5 3.5 3.5 1.68 0 2.95-.95 3.37-2.37.1-.34.43-.57.78-.57H15c3.87 0 7-3.13 7-7 0-5-4.03-9-9-9zm-3.75 7.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm3-3.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm4.25 2.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm2 4a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>
+        </button>
+      </div>
+      <div class="sliders">
+        <label class="slider-group compact">
+          Speed
+          <input id="speed" type="range" min="0.5" max="2" step="0.05" value="1" aria-label="Speed" />
+        </label>
+        <label class="slider-group compact">
+          Volume
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="0.85" aria-label="Volume" />
+        </label>
+        <label class="slider-group compact">
+          Zoom
+          <input id="zoom" type="range" min="80" max="260" step="5" value="160" aria-label="Zoom" />
+        </label>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.js"></script>
+  <script src="js/modules/time-utils.js"></script>
+  <script src="js/modules/marks-utils.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

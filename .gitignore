@@ -1,0 +1,6 @@
+visual-piano.backup2/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
