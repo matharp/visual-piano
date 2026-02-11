@@ -352,7 +352,7 @@
       steelpan: -3,
       am: -2,
       fm: -2,
-      duo: -2,
+      bell: -6,
       mono: -2,
       membrane: -4,
       organ: -2
@@ -445,11 +445,14 @@
           modulationIndex: 8,
           envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 1.0 }
         });
-      } else if (type === 'duo') {
-        synth = new Tone.PolySynth(Tone.DuoSynth, {
-          harmonicity: 1.5,
-          vibratoAmount: 0.2,
-          envelope: { attack: 0.02, decay: 0.2, sustain: 0.5, release: 1.0 }
+      } else if (type === 'bell') {
+        synth = new Tone.PolySynth(Tone.FMSynth, {
+          harmonicity: 3.2,
+          modulationIndex: 15,
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.002, decay: 0.8, sustain: 0.0, release: 1.5 },
+          modulation: { type: 'triangle' },
+          modulationEnvelope: { attack: 0.001, decay: 0.5, sustain: 0.0, release: 0.8 }
         });
       } else if (type === 'mono') {
         synth = new Tone.PolySynth(Tone.MonoSynth, {
