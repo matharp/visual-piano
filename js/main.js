@@ -1,10 +1,3 @@
-    /**
-     * Visual Piano main runtime.
-     * This file owns app orchestration (state, rendering, events).
-     * Shared pure helpers are loaded first from:
-     * - window.VisualPianoTimeUtils
-     * - window.VisualPianoMarksUtils
-     */
     const { formatTime, parseTimeInput } = window.VisualPianoTimeUtils || {};
     const { insertSortedUniqueMark, resolveLoopSegmentFromMarks } = window.VisualPianoMarksUtils || {};
 
@@ -363,7 +356,6 @@
       try {
         await Tone.start();
       } catch (_) {
-        // Browser gesture policy can reject start; retry on next gesture.
       }
     }
 
@@ -512,7 +504,6 @@
         }
       }
 
-      // Add black keys as absolute elements positioned between white keys
       whiteKeys.forEach(({ note, el }) => {
         const nextNote = note + 1;
         if (nextNote <= END_NOTE && isBlack(nextNote)) {
@@ -564,8 +555,6 @@
         }
       });
     }
-
-    // metronome is now in the transport bar
 
     function updateNoteGeometry() {
       if (!notes.length) return;
@@ -733,11 +722,9 @@
       buildGridLines();
       const tempoValue = Math.round(tempoMap[0]?.bpm || 0);
       tempoReadout.textContent = tempoValue ? `${tempoValue} BPM` : '';
-      const inferred = inferKeyFromNotes(notes);
-      const chosen = inferred;
-      currentKeySignature = chosen;
-      if (chosen) {
-        keyToggleBtn.textContent = `${chosen.key} ${chosen.scale}`;
+      currentKeySignature = inferKeyFromNotes(notes);
+      if (currentKeySignature) {
+        keyToggleBtn.textContent = `${currentKeySignature.key} ${currentKeySignature.scale}`;
       } else {
         keyToggleBtn.textContent = '';
       }
@@ -857,11 +844,6 @@
     function getNoteColor(note) {
       const isLeft = note.hand ? note.hand === 'left' : note.midi < splitPoint;
       return isLeft ? leftHandColor : rightHandColor;
-    }
-
-    function isLeftHand(note) {
-      if (note.hand) return note.hand === 'left';
-      return note.midi < splitPoint;
     }
 
     function computeSplitPoint(notesList) {
@@ -1273,7 +1255,6 @@
         lastIndex++;
       }
 
-      // Ghost preview: next bar (outline only)
       let nextBarStart = null;
       let nextBarEnd = null;
       if (gridLines.length) {
@@ -1322,12 +1303,10 @@
         const width = note.width * note.widthScale;
         const x = note.x + (note.width - width) / 2;
 
-        // Note shadow
         ctx.globalAlpha = 0.18;
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(x + 1, yTop + 2, width, drawHeight);
 
-        // Note body (velocity brightness)
         ctx.fillStyle = note.color;
         const baseAlpha = note.isBlack ? 0.82 : 0.92;
         ctx.globalAlpha = baseAlpha * note.alphaFactor;
@@ -1340,7 +1319,6 @@
           ctx.strokeRect(x + 0.5, yTop + 0.5, width - 1, drawHeight - 1);
         }
 
-        // Hit flash at impact
         if (Math.abs(note.time - currentTime) <= 0.03) {
           ctx.globalAlpha = 0.5;
           ctx.fillStyle = note.color;
@@ -1651,22 +1629,6 @@
       if (!gridLines.length) return time;
       const idx = Math.max(0, lowerBoundGridLines(time) - 1);
       return gridLines[idx]?.time ?? time;
-    }
-
-    function getAdjacentBar(time, direction) {
-      if (!gridLines.length) return time;
-      const idx = Math.max(0, lowerBoundGridLines(time) - 1);
-      const target = idx + direction;
-      if (target < 0) return 0;
-      if (target >= gridLines.length) return totalDuration;
-      return gridLines[target]?.time ?? time;
-    }
-
-    function getSeekTimeFromPointer(event) {
-      const rect = progress.getBoundingClientRect();
-      const ratio = (event.clientX - rect.left) / rect.width;
-      const clamped = Math.min(1, Math.max(0, ratio));
-      return clamped * totalDuration;
     }
 
     function updateLoopFromMarks() {

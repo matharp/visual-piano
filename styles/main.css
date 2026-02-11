@@ -243,9 +243,6 @@
     .seek-group {
       min-width: 260px;
       width: 100%;
-    }
-
-    .seek-group {
       display: grid;
       grid-auto-flow: row;
       gap: 4px;
@@ -581,10 +578,6 @@
       min-width: 0;
     }
 
-    #top-controls {
-      display: none;
-    }
-
     #metronome-indicator {
       width: 10px;
       height: 10px;
@@ -718,8 +711,6 @@
       color: #ffffff;
       text-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
     }
-
-    .key-in-scale {}
 
     .key-out-of-scale::after {
       content: '';
