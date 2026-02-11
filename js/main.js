@@ -1689,6 +1689,17 @@
       event.stopPropagation();
     });
 
+    loopReadout.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+    });
+    loopReadout.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+    loopReadout.addEventListener('dblclick', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
     [timeReadout, metronomeIndicator].forEach((el) => {
       el.addEventListener('pointerdown', (event) => {
         event.stopPropagation();
