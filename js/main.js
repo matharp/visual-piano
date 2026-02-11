@@ -315,12 +315,12 @@
       { name: 'Air', low: -1, mid: 0, high: 7 }
     ];
     const REVERB_PRESETS = [
-      { name: 'OFF', roomSize: 0.1, wet: 0 },
-      { name: 'Room', roomSize: 0.26, wet: 0.14 },
-      { name: 'Hall', roomSize: 0.52, wet: 0.2 },
-      { name: 'Cathedral', roomSize: 0.78, wet: 0.32 },
-      { name: 'Plate', roomSize: 0.36, wet: 0.17 },
-      { name: 'Ambient', roomSize: 0.9, wet: 0.4 }
+      { name: 'OFF', roomSize: 0.2, dampening: 3000, wet: 0 },
+      { name: 'Room', roomSize: 0.3, dampening: 2200, wet: 0.16 },
+      { name: 'Hall', roomSize: 0.56, dampening: 4200, wet: 0.28 },
+      { name: 'Cathedral', roomSize: 0.84, dampening: 6500, wet: 0.44 },
+      { name: 'Plate', roomSize: 0.42, dampening: 8200, wet: 0.24 },
+      { name: 'Ambient', roomSize: 0.96, dampening: 12000, wet: 0.58 }
     ];
 
     const SOUND_OFFSETS = {
@@ -366,7 +366,10 @@
       filter = new Tone.Filter(12000, 'lowpass');
       compressor = new Tone.Compressor(-18, 3);
       eqNode = new Tone.EQ3(0, 0, 0);
-      reverbNode = new Tone.JCReverb(0.1);
+      reverbNode = new Tone.Freeverb({
+        roomSize: 0.2,
+        dampening: 3000
+      });
       reverbNode.wet.value = 0;
       filter.connect(compressor);
       compressor.connect(eqNode);
@@ -1020,6 +1023,7 @@
       if (!audioReady || !reverbNode) return;
       const preset = REVERB_PRESETS[reverbPresetIndex];
       reverbNode.roomSize.value = preset.roomSize;
+      reverbNode.dampening.value = preset.dampening;
       reverbNode.wet.value = preset.wet;
     }
 
