@@ -733,11 +733,8 @@
       buildGridLines();
       const tempoValue = Math.round(tempoMap[0]?.bpm || 0);
       tempoReadout.textContent = tempoValue ? `${tempoValue} BPM` : '';
-      const headerKeySignature = midi.header.keySignatures && midi.header.keySignatures.length
-        ? midi.header.keySignatures[midi.header.keySignatures.length - 1]
-        : null;
       const inferred = inferKeyFromNotes(notes);
-      const chosen = headerKeySignature || inferred;
+      const chosen = inferred;
       currentKeySignature = chosen;
       if (chosen) {
         keyToggleBtn.textContent = `${chosen.key} ${chosen.scale}`;
