@@ -31,6 +31,7 @@
     const jumpMarkBtn = document.getElementById('jump-mark');
     const loopToggleBtn = document.getElementById('loop-toggle');
     const handModeBtn = document.getElementById('hand-mode-btn');
+    const keyboardModeBtn = document.getElementById('keyboard-mode-btn');
 
     const songTitleEl = document.getElementById('song-title');
     const centerMetaEl = document.getElementById('center-meta');
@@ -245,6 +246,8 @@
     let timeSigMap = [{ time: 0, numerator: 4, denominator: 4 }];
     let gridLines = [];
     let gridEnabled = false;
+    let keyboardModeEnabled = false;
+    const keyboardHeldNotes = new Map();
 
     const DEFAULTS = {
       speed: 1,
@@ -257,6 +260,12 @@
       'default.mid',
       'Johann Pachelbel - Canon in D.mid'
     ];
+    const KEYBOARD_MIDI_MAP = {
+      KeyZ: 60, KeyS: 61, KeyX: 62, KeyD: 63, KeyC: 64, KeyV: 65, KeyG: 66, KeyB: 67, KeyH: 68, KeyN: 69, KeyJ: 70, KeyM: 71,
+      Comma: 72, KeyL: 73, Period: 74, Semicolon: 75, Slash: 76,
+      KeyQ: 72, Digit2: 73, KeyW: 74, Digit3: 75, KeyE: 76, KeyR: 77, Digit5: 78, KeyT: 79, Digit6: 80, KeyY: 81, Digit7: 82, KeyU: 83,
+      KeyI: 84, Digit9: 85, KeyO: 86, Digit0: 87, KeyP: 88
+    };
 
     const SOUND_OFFSETS = {
       bright: -2,
@@ -922,6 +931,29 @@
       handModeBtn.setAttribute('title', handLabel);
     }
 
+    function releaseKeyboardHeldNotes() {
+      keyboardHeldNotes.forEach((midi) => stopKey(midi));
+      keyboardHeldNotes.clear();
+    }
+
+    function updateKeyboardModeButton() {
+      keyboardModeBtn.classList.toggle('active', keyboardModeEnabled);
+      const label = keyboardModeEnabled ? 'Keyboard mode: on' : 'Keyboard mode: off';
+      keyboardModeBtn.setAttribute('aria-label', label);
+      keyboardModeBtn.setAttribute('title', `${label} (FL-style typing keys)`);
+    }
+
+    function setKeyboardMode(nextEnabled) {
+      const enabled = Boolean(nextEnabled);
+      if (enabled === keyboardModeEnabled) return;
+      keyboardModeEnabled = enabled;
+      if (!keyboardModeEnabled) {
+        releaseKeyboardHeldNotes();
+      }
+      updateKeyboardModeButton();
+      showToast(keyboardModeEnabled ? 'Keyboard mode on. Hotkeys disabled.' : 'Keyboard mode off. Hotkeys enabled.');
+    }
+
     function applyPalette(index) {
       const palette = PALETTES[index] || PALETTES[0];
       leftHandColor = palette.left;
@@ -1384,6 +1416,7 @@
     keyboard.addEventListener('pointerup', releasePointer);
     keyboard.addEventListener('pointercancel', releasePointer);
     keyboard.addEventListener('pointerleave', releasePointer);
+    keyboardModeBtn.addEventListener('click', () => setKeyboardMode(!keyboardModeEnabled));
 
     fileInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
@@ -1724,9 +1757,36 @@
 
     handModeBtn.addEventListener('click', toggleHandMode);
 
+    document.addEventListener('keydown', async (event) => {
+      if (!keyboardModeEnabled || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isTypingTarget(event.target)) return;
+      const midiNote = KEYBOARD_MIDI_MAP[event.code];
+      if (midiNote === undefined) return;
+      event.preventDefault();
+      if (keyboardHeldNotes.has(event.code) || event.repeat) return;
+      await ensureAudioStarted();
+      playKey(midiNote);
+      keyboardHeldNotes.set(event.code, midiNote);
+    });
+
+    document.addEventListener('keyup', (event) => {
+      if (!keyboardModeEnabled) return;
+      const midiNote = keyboardHeldNotes.get(event.code);
+      if (midiNote === undefined) return;
+      event.preventDefault();
+      stopKey(midiNote);
+      keyboardHeldNotes.delete(event.code);
+    });
+
+    window.addEventListener('blur', releaseKeyboardHeldNotes);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) releaseKeyboardHeldNotes();
+    });
+
     document.addEventListener('keydown', (event) => {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
+      if (keyboardModeEnabled) return;
 
       if (event.code === 'Space') {
         event.preventDefault();
@@ -1798,4 +1858,5 @@
     });
 
     setControlsEnabled(false);
+    updateKeyboardModeButton();
     loadDefaultMidiOnStartup();

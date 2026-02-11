@@ -6,6 +6,7 @@ Built using Codex CLI. A Synthesia-style MIDI practice app. Load a `.mid` file, 
 - Auto-loads `assets/default.mid` on startup (without autoplay, when served over HTTP)
 - MIDI load via file picker or drag-and-drop
 - Falling-note highway synced to keyboard playback
+- Keyboard Mode toggle for FL-style typing-key instrument input
 - Loop workflow with marks, loop toggle, and editable loop timestamps
 - Hand filtering (`both`, `left`, `right`) with a single cycle button
 - Multiple built-in synth presets (including `Organ`)
@@ -42,6 +43,7 @@ Built using Codex CLI. A Synthesia-style MIDI practice app. Load a `.mid` file, 
 - For sampled piano replacement, swap synth construction in `js/main.js` audio section.
 
 ## Hotkeys
+- Keyboard Mode on: typing keyboard plays notes (transport hotkeys are disabled)
 - `Space`: play/pause
 - `R`: stop
 - `Left`/`Right`: seek `-2s` / `+2s`
