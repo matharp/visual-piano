@@ -36,6 +36,8 @@
     const loopReadout = document.getElementById('loop-readout');
     const loopStartInput = document.getElementById('loop-start-input');
     const loopEndInput = document.getElementById('loop-end-input');
+    const helpModeBtn = document.getElementById('help-mode-btn');
+    const helpTooltip = document.getElementById('help-tooltip');
 
     const START_NOTE = 21; // A0
     const END_NOTE = 108; // C8
@@ -284,7 +286,9 @@
     let gridLines = [];
     let gridEnabled = false;
     let keyboardModeEnabled = false;
+    let helpModeEnabled = false;
     let eqPresetIndex = 0;
+    let activeHelpTarget = null;
     const keyboardHeldNotes = new Map();
 
     const DEFAULTS = {
@@ -312,6 +316,31 @@
       { name: 'Lo-Fi', low: 4, mid: -3, high: -8 },
       { name: 'Dark Pad', low: 2, mid: -2, high: -5 }
     ];
+    const HELP_TEXT_BY_ID = {
+      'help-mode-btn': 'Toggle help mode. When on, hover controls to see how they work.',
+      'key-toggle': 'Toggle key/scale highlighting on the piano.',
+      'mark-loop': 'Add a loop mark at the current bar.',
+      'jump-mark': 'Jump to the next loop mark. Double-click to clear all marks.',
+      'loop-toggle': 'Enable or disable loop playback between marks.',
+      'progress': 'Seek through the song. Drag and release to scrub.',
+      'loop-start-input': 'Loop start time. Press Enter to apply.',
+      'loop-end-input': 'Loop end time. Press Enter to apply.',
+      'time-readout': 'Current time and total duration.',
+      'metronome-indicator': 'Beat pulse indicator while playing.',
+      'eq-btn': 'Cycle master EQ presets tuned for MIDI playback.',
+      'hand-mode-btn': 'Cycle hand filter: both, left, or right.',
+      'keyboard-mode-btn': 'Use your typing keyboard as an instrument; transport hotkeys are disabled.',
+      'play-btn': 'Play or pause playback.',
+      'stop-btn': 'Stop playback and return to loop start or song start.',
+      'file-input': 'Load a MIDI file from disk.',
+      'sound-select': 'Choose synth instrument sound.',
+      'palette-btn': 'Cycle note color palettes. Double-click to reset.',
+      'speed': 'Adjust playback speed.',
+      'volume': 'Adjust master output volume.',
+      'zoom': 'Adjust note highway zoom.',
+      'highway': 'Falling-note visualization area.',
+      'keyboard': 'On-screen piano. Click and drag keys to audition notes.'
+    };
 
     const SOUND_OFFSETS = {
       bright: -2,
@@ -1037,6 +1066,96 @@
       keyboardModeBtn.setAttribute('title', `${label} (FL-style typing keys)`);
     }
 
+    function updateHelpModeButton() {
+      helpModeBtn.classList.toggle('active', helpModeEnabled);
+      const label = helpModeEnabled ? 'Help mode: on' : 'Help mode: off';
+      helpModeBtn.setAttribute('aria-label', label);
+      helpModeBtn.setAttribute('title', label);
+    }
+
+    function hideHelpTooltip() {
+      helpTooltip.classList.add('hidden');
+      activeHelpTarget = null;
+    }
+
+    function positionHelpTooltip(clientX, clientY) {
+      const offset = 14;
+      const pad = 10;
+      const rect = helpTooltip.getBoundingClientRect();
+      let x = clientX + offset;
+      let y = clientY + offset;
+      if (x + rect.width > window.innerWidth - pad) {
+        x = Math.max(pad, clientX - rect.width - offset);
+      }
+      if (y + rect.height > window.innerHeight - pad) {
+        y = Math.max(pad, clientY - rect.height - offset);
+      }
+      helpTooltip.style.left = `${x}px`;
+      helpTooltip.style.top = `${y}px`;
+    }
+
+    function showHelpTooltip(message, clientX, clientY) {
+      if (!message) {
+        hideHelpTooltip();
+        return;
+      }
+      helpTooltip.textContent = message;
+      helpTooltip.classList.remove('hidden');
+      positionHelpTooltip(clientX, clientY);
+    }
+
+    function getHelpTarget(startEl) {
+      if (!(startEl instanceof Element)) return null;
+      return startEl.closest('button, input, select, label, #keyboard, #highway, #time-readout, #metronome-indicator');
+    }
+
+    function getHelpText(target) {
+      if (!(target instanceof Element)) return null;
+
+      if (target.id && HELP_TEXT_BY_ID[target.id]) {
+        return HELP_TEXT_BY_ID[target.id];
+      }
+
+      if (target.classList.contains('file-icon')) {
+        return HELP_TEXT_BY_ID['file-input'];
+      }
+
+      if (target.classList.contains('instrument-btn')) {
+        return HELP_TEXT_BY_ID['sound-select'];
+      }
+
+      if (target.classList.contains('white-key') || target.classList.contains('black-key') || target.classList.contains('key')) {
+        return 'Piano key. Click/drag to play notes manually.';
+      }
+
+      if (target.matches('input[type="range"]')) {
+        return 'Drag to adjust this value.';
+      }
+
+      if (target.matches('input[type="text"]')) {
+        return 'Edit this value, then press Enter.';
+      }
+
+      if (target.matches('select')) {
+        return 'Open and choose an option.';
+      }
+
+      if (target.matches('button')) {
+        return 'Click to use this control.';
+      }
+
+      return null;
+    }
+
+    function setHelpMode(nextEnabled) {
+      helpModeEnabled = Boolean(nextEnabled);
+      updateHelpModeButton();
+      if (!helpModeEnabled) {
+        hideHelpTooltip();
+      }
+      showToast(helpModeEnabled ? 'Help mode on. Hover controls for tips.' : 'Help mode off.');
+    }
+
     function updateEqButton() {
       const eqPreset = EQ_PRESETS[eqPresetIndex];
       const eqLabel = `EQ: ${eqPreset.name}`;
@@ -1532,6 +1651,7 @@
     keyboard.addEventListener('pointerleave', releasePointer);
     eqBtn.addEventListener('click', cycleEqPreset);
     keyboardModeBtn.addEventListener('click', () => setKeyboardMode(!keyboardModeEnabled));
+    helpModeBtn.addEventListener('click', () => setHelpMode(!helpModeEnabled));
 
     fileInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
@@ -1556,6 +1676,51 @@
         reader.onload = (e) => parseMidi(e.target.result, file.name, true);
         reader.readAsArrayBuffer(file);
       }
+    });
+
+    document.addEventListener('pointerover', (event) => {
+      if (!helpModeEnabled) return;
+      const target = getHelpTarget(event.target);
+      if (!target) {
+        hideHelpTooltip();
+        return;
+      }
+      const text = getHelpText(target);
+      if (!text) {
+        hideHelpTooltip();
+        return;
+      }
+      activeHelpTarget = target;
+      showHelpTooltip(text, event.clientX, event.clientY);
+    });
+
+    document.addEventListener('pointermove', (event) => {
+      if (!helpModeEnabled || !activeHelpTarget || helpTooltip.classList.contains('hidden')) return;
+      positionHelpTooltip(event.clientX, event.clientY);
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+      if (!helpModeEnabled) return;
+      const target = getHelpTarget(event.target);
+      if (!target) {
+        hideHelpTooltip();
+      }
+    });
+
+    document.addEventListener('focusin', (event) => {
+      if (!helpModeEnabled) return;
+      const target = getHelpTarget(event.target);
+      if (!target) return;
+      const text = getHelpText(target);
+      if (!text) return;
+      const rect = target.getBoundingClientRect();
+      activeHelpTarget = target;
+      showHelpTooltip(text, rect.left + 8, rect.bottom + 8);
+    });
+
+    document.addEventListener('focusout', () => {
+      if (!helpModeEnabled) return;
+      hideHelpTooltip();
     });
 
     async function loadDefaultMidiOnStartup() {
@@ -1994,4 +2159,5 @@
     setControlsEnabled(false);
     updateEqButton();
     updateKeyboardModeButton();
+    updateHelpModeButton();
     loadDefaultMidiOnStartup();

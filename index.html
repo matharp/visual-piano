@@ -32,6 +32,9 @@
         <button id="key-toggle" type="button" class="key-pill" aria-label="Toggle key highlight"></button>
       </div>
     </div>
+    <div class="header-tools">
+      <button id="help-mode-btn" class="help-btn" type="button" aria-label="Help mode: off" title="Help mode: off">?</button>
+    </div>
   </header>
 
   <main>
@@ -143,6 +146,7 @@
       </div>
     </div>
   </main>
+  <div id="help-tooltip" class="help-tooltip hidden" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.js"></script>
