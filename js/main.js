@@ -1254,10 +1254,11 @@
     function drawNotes() {
       if (!midiData) return;
       const currentTime = (Tone.Transport.seconds || 0) * playbackSpeed;
-      const lookAhead = 3.5;
-      const lookBehind = 1.2;
       const pixelsPerSecond = zoomValue;
       const hitLineY = viewportHeight;
+      const visibleSeconds = viewportHeight / Math.max(1, pixelsPerSecond);
+      const lookAhead = visibleSeconds + 0.5;
+      const lookBehind = Math.max(1.2, visibleSeconds * 0.28);
 
       const startTime = Math.max(0, currentTime - lookBehind);
       const endTime = currentTime + lookAhead;
