@@ -696,80 +696,94 @@
     function parseMidi(arrayBuffer, fileName, autoplay = true) {
       stopPlayback();
       resetUIState();
-      const midi = new Midi(arrayBuffer);
-      midiData = midi;
-      notes = [];
-      midi.tracks.forEach((track, idx) => {
-        track.notes.forEach((note) => {
-          notes.push({
-            time: note.time,
-            duration: note.duration,
-            midi: note.midi,
-            freq: midiToFreq(note.midi),
-            velocity: note.velocity,
-            track: idx
+      try {
+        const midi = new Midi(arrayBuffer);
+        midiData = midi;
+        notes = [];
+        midi.tracks.forEach((track, idx) => {
+          track.notes.forEach((note) => {
+            notes.push({
+              time: note.time,
+              duration: note.duration,
+              midi: note.midi,
+              freq: midiToFreq(note.midi),
+              velocity: note.velocity,
+              track: idx
+            });
           });
         });
-      });
-      notes.sort((a, b) => a.time - b.time);
-      assignHands(notes);
-      rebuildHandCaches();
-      notes.forEach((note) => {
-        const vel = Math.max(0.2, note.velocity || 0.7);
-        note.widthScale = 0.85 + vel * 0.25;
-        note.alphaFactor = 0.7 + vel * 0.3;
-        note.color = getNoteColor(note);
-      });
-      applyPalette(paletteIndex);
+        notes.sort((a, b) => a.time - b.time);
+        assignHands(notes);
+        rebuildHandCaches();
+        notes.forEach((note) => {
+          const vel = Math.max(0.2, note.velocity || 0.7);
+          note.widthScale = 0.85 + vel * 0.25;
+          note.alphaFactor = 0.7 + vel * 0.3;
+          note.color = getNoteColor(note);
+        });
+        applyPalette(paletteIndex);
 
-      totalDuration = midi.duration || (notes.length ? notes[notes.length - 1].time + notes[notes.length - 1].duration : 0);
+        totalDuration = midi.duration || (notes.length ? notes[notes.length - 1].time + notes[notes.length - 1].duration : 0);
 
-      loopStartSong = 0;
-      loopEndSong = totalDuration;
-      isLooping = false;
-      updateLoopUI();
-      seekMarks = [];
-      renderSeekMarks();
+        loopStartSong = 0;
+        loopEndSong = totalDuration;
+        isLooping = false;
+        updateLoopUI();
+        seekMarks = [];
+        renderSeekMarks();
 
-      songTitleEl.textContent = fileName ? fileName : '';
-      buildTempoMap(midi);
-      buildTimeSigMap(midi);
-      buildGridLines();
-      const tempoValue = Math.round(tempoMap[0]?.bpm || 0);
-      tempoReadout.textContent = tempoValue ? `${tempoValue} BPM` : '';
-      currentKeySignature = inferKeyFromNotes(notes);
-      if (currentKeySignature) {
-        keyToggleBtn.textContent = `${currentKeySignature.key} ${currentKeySignature.scale}`;
-      } else {
-        keyToggleBtn.textContent = '';
-      }
-      keyToggleBtn.classList.toggle('hidden', !keyToggleBtn.textContent);
+        songTitleEl.textContent = fileName ? fileName : '';
+        buildTempoMap(midi);
+        buildTimeSigMap(midi);
+        buildGridLines();
+        const tempoValue = Math.round(tempoMap[0]?.bpm || 0);
+        tempoReadout.textContent = tempoValue ? `${tempoValue} BPM` : '';
+        currentKeySignature = inferKeyFromNotes(notes);
+        if (currentKeySignature) {
+          keyToggleBtn.textContent = `${currentKeySignature.key} ${currentKeySignature.scale}`;
+        } else {
+          keyToggleBtn.textContent = '';
+        }
+        keyToggleBtn.classList.toggle('hidden', !keyToggleBtn.textContent);
 
-      tempoReadout.classList.toggle('hidden', !tempoReadout.textContent);
-      const showMeta = tempoReadout.textContent || keyToggleBtn.textContent || songTitleEl.textContent;
-      centerMetaEl.classList.toggle('hidden', !showMeta);
+        tempoReadout.classList.toggle('hidden', !tempoReadout.textContent);
+        const showMeta = tempoReadout.textContent || keyToggleBtn.textContent || songTitleEl.textContent;
+        centerMetaEl.classList.toggle('hidden', !showMeta);
 
-      progress.value = 0;
-      progress.max = totalDuration || 1;
-      Tone.Transport.seconds = 0;
-      lastIndex = 0;
-      lastTime = 0;
-      lastBeat = -1;
+        progress.value = 0;
+        progress.max = totalDuration || 1;
+        Tone.Transport.seconds = 0;
+        lastIndex = 0;
+        lastTime = 0;
+        lastBeat = -1;
 
-      updateNoteGeometry();
-      gridEnabled = true;
-      setControlsEnabled(true);
-      updateLoopUI();
-      if (autoplay) {
-        showToast('MIDI loaded. Playing.');
-        startPlayback();
-      } else {
-        showToast('MIDI loaded.');
+        updateNoteGeometry();
+        gridEnabled = true;
+        setControlsEnabled(true);
+        updateLoopUI();
+        if (autoplay) {
+          showToast('MIDI loaded. Playing.');
+          startPlayback();
+        } else {
+          showToast('MIDI loaded.');
+        }
+        return true;
+      } catch (error) {
+        console.error('Failed to parse MIDI file.', error);
+        midiData = null;
+        notes = [];
+        renderNotes = [];
+        notesLeft = [];
+        notesRight = [];
+        totalDuration = 0;
+        setControlsEnabled(false);
+        showToast('Failed to load MIDI. File may be invalid.');
+        return false;
       }
     }
 
     function setControlsEnabled(enabled) {
-      [playBtn, stopBtn, markLoopBtn, jumpMarkBtn, loopToggleBtn, soundSelect, paletteBtn, handModeBtn].forEach((btn) => {
+      [playBtn, stopBtn, markLoopBtn, jumpMarkBtn, loopToggleBtn, soundSelect, paletteBtn, handModeBtn, eqBtn, keyboardModeBtn].forEach((btn) => {
         btn.disabled = !enabled;
       });
       if (!enabled) {
@@ -790,6 +804,7 @@
         gridLines = [];
         handMode = DEFAULTS.handMode;
         updateHandButtons();
+        setKeyboardMode(false);
       }
     }
 
@@ -1526,11 +1541,14 @@
       reader.readAsArrayBuffer(file);
     });
 
-    document.addEventListener('dragover', (event) => {
+    const dropTarget = document.querySelector('main');
+    dropTarget.addEventListener('dragover', (event) => {
+      if (!event.dataTransfer?.types?.includes('Files')) return;
       event.preventDefault();
     });
 
-    document.addEventListener('drop', (event) => {
+    dropTarget.addEventListener('drop', (event) => {
+      if (!event.dataTransfer?.types?.includes('Files')) return;
       event.preventDefault();
       const file = event.dataTransfer.files[0];
       if (file) {
@@ -1575,6 +1593,7 @@
     speedSlider.addEventListener('input', () => {
       const value = Number(speedSlider.value);
       if (!midiData) return;
+      const wasPlaying = Tone.Transport.state === 'started';
       const songTime = (Tone.Transport.seconds || 0) * playbackSpeed;
       clearActive();
       if (synth) synth.releaseAll();
@@ -1583,10 +1602,17 @@
       Tone.Transport.seconds = songTime / playbackSpeed;
       setTransportLoop();
       buildPart();
-      Tone.Transport.start('+0.01', Tone.Transport.seconds || 0);
+      if (wasPlaying) {
+        Tone.Transport.start('+0.01', Tone.Transport.seconds || 0);
+      }
       lastIndex = lowerBound(songTime, renderNotes);
-      playBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"></path></svg>';
-      playBtn.setAttribute('aria-label', 'Pause');
+      if (wasPlaying) {
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"></path></svg>';
+        playBtn.setAttribute('aria-label', 'Pause');
+      } else {
+        playBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
+        playBtn.setAttribute('aria-label', 'Play');
+      }
       showToast(`Speed: ${value.toFixed(2)}x`);
     });
 
