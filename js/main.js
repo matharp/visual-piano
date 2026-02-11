@@ -747,7 +747,6 @@
         notes.forEach((note) => {
           const vel = Math.max(0.2, note.velocity || 0.7);
           note.widthScale = 0.85 + vel * 0.25;
-          note.alphaFactor = 0.7 + vel * 0.3;
           note.color = getNoteColor(note);
         });
         applyPalette(paletteIndex);
@@ -1523,7 +1522,7 @@
 
         ctx.fillStyle = note.color;
         const baseAlpha = note.isBlack ? 0.82 : 0.92;
-        ctx.globalAlpha = baseAlpha * note.alphaFactor;
+        ctx.globalAlpha = baseAlpha;
         ctx.fillRect(x, yTop, width, drawHeight);
 
         if (isStaccato) {
