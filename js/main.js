@@ -24,7 +24,6 @@
     const jumpMarkBtn = document.getElementById('jump-mark');
     const loopToggleBtn = document.getElementById('loop-toggle');
     const eqBtn = document.getElementById('eq-btn');
-    const reverbBtn = document.getElementById('reverb-btn');
     const handModeBtn = document.getElementById('hand-mode-btn');
     const keyboardModeBtn = document.getElementById('keyboard-mode-btn');
 
@@ -286,7 +285,6 @@
     let gridEnabled = false;
     let keyboardModeEnabled = false;
     let eqPresetIndex = 0;
-    let reverbPresetIndex = 0;
     const keyboardHeldNotes = new Map();
 
     const DEFAULTS = {
@@ -308,19 +306,11 @@
     };
     const EQ_PRESETS = [
       { name: 'OFF', low: 0, mid: 0, high: 0 },
-      { name: 'Warm', low: 4, mid: -1, high: -3 },
-      { name: 'Bright', low: -2, mid: 1, high: 5 },
-      { name: 'Scooped', low: 4, mid: -5, high: 4 },
-      { name: 'Mid Focus', low: -3, mid: 5, high: -2 },
-      { name: 'Air', low: -1, mid: 0, high: 7 }
-    ];
-    const REVERB_PRESETS = [
-      { name: 'OFF', roomSize: 0.2, dampening: 3000, wet: 0 },
-      { name: 'Room', roomSize: 0.3, dampening: 2200, wet: 0.16 },
-      { name: 'Hall', roomSize: 0.56, dampening: 4200, wet: 0.28 },
-      { name: 'Cathedral', roomSize: 0.84, dampening: 6500, wet: 0.44 },
-      { name: 'Plate', roomSize: 0.42, dampening: 8200, wet: 0.24 },
-      { name: 'Ambient', roomSize: 0.96, dampening: 12000, wet: 0.58 }
+      { name: 'Piano Warmth', low: 3, mid: 1, high: -2 },
+      { name: 'MIDI Presence', low: -1, mid: 3, high: 2 },
+      { name: 'Clarity Boost', low: -2, mid: 0, high: 5 },
+      { name: 'Lo-Fi', low: 4, mid: -3, high: -8 },
+      { name: 'Dark Pad', low: 2, mid: -2, high: -5 }
     ];
 
     const SOUND_OFFSETS = {
@@ -356,7 +346,6 @@
     let filter = null;
     let compressor = null;
     let eqNode = null;
-    let reverbNode = null;
     let synth = null;
     let audioReady = false;
 
@@ -366,18 +355,11 @@
       filter = new Tone.Filter(12000, 'lowpass');
       compressor = new Tone.Compressor(-18, 3);
       eqNode = new Tone.EQ3(0, 0, 0);
-      reverbNode = new Tone.Freeverb({
-        roomSize: 0.2,
-        dampening: 3000
-      });
-      reverbNode.wet.value = 0;
       filter.connect(compressor);
       compressor.connect(eqNode);
-      eqNode.connect(reverbNode);
-      reverbNode.connect(master);
+      eqNode.connect(master);
       audioReady = true;
       applyEqPreset();
-      applyReverbPreset();
       createSynth(soundSelect.value || 'bright');
       applyVolume();
     }
@@ -998,17 +980,12 @@
       keyboardModeBtn.setAttribute('title', `${label} (FL-style typing keys)`);
     }
 
-    function updateEffectButtons() {
+    function updateEqButton() {
       const eqPreset = EQ_PRESETS[eqPresetIndex];
-      const reverbPreset = REVERB_PRESETS[reverbPresetIndex];
       const eqLabel = `EQ: ${eqPreset.name}`;
-      const reverbLabel = `Reverb: ${reverbPreset.name}`;
       eqBtn.classList.toggle('active', eqPresetIndex > 0);
-      reverbBtn.classList.toggle('active', reverbPresetIndex > 0);
       eqBtn.setAttribute('aria-label', eqLabel);
       eqBtn.setAttribute('title', `${eqLabel} (click to cycle)`);
-      reverbBtn.setAttribute('aria-label', reverbLabel);
-      reverbBtn.setAttribute('title', `${reverbLabel} (click to cycle)`);
     }
 
     function applyEqPreset() {
@@ -1019,26 +996,11 @@
       eqNode.high.value = preset.high;
     }
 
-    function applyReverbPreset() {
-      if (!audioReady || !reverbNode) return;
-      const preset = REVERB_PRESETS[reverbPresetIndex];
-      reverbNode.roomSize.value = preset.roomSize;
-      reverbNode.dampening.value = preset.dampening;
-      reverbNode.wet.value = preset.wet;
-    }
-
     function cycleEqPreset() {
       eqPresetIndex = (eqPresetIndex + 1) % EQ_PRESETS.length;
       applyEqPreset();
-      updateEffectButtons();
+      updateEqButton();
       showToast(`EQ: ${EQ_PRESETS[eqPresetIndex].name}`);
-    }
-
-    function cycleReverbPreset() {
-      reverbPresetIndex = (reverbPresetIndex + 1) % REVERB_PRESETS.length;
-      applyReverbPreset();
-      updateEffectButtons();
-      showToast(`Reverb: ${REVERB_PRESETS[reverbPresetIndex].name}`);
     }
 
     function setKeyboardMode(nextEnabled) {
@@ -1512,7 +1474,6 @@
     keyboard.addEventListener('pointercancel', releasePointer);
     keyboard.addEventListener('pointerleave', releasePointer);
     eqBtn.addEventListener('click', cycleEqPreset);
-    reverbBtn.addEventListener('click', cycleReverbPreset);
     keyboardModeBtn.addEventListener('click', () => setKeyboardMode(!keyboardModeEnabled));
 
     fileInput.addEventListener('change', (event) => {
@@ -1939,6 +1900,6 @@
     });
 
     setControlsEnabled(false);
-    updateEffectButtons();
+    updateEqButton();
     updateKeyboardModeButton();
     loadDefaultMidiOnStartup();
