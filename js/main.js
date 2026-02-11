@@ -252,6 +252,11 @@
       zoom: 160,
       handMode: 'both'
     };
+    const DEFAULT_STARTUP_MIDI_PATHS = [
+      'assets/default.mid',
+      'default.mid',
+      'Johann Pachelbel - Canon in D.mid'
+    ];
 
     const SOUND_OFFSETS = {
       bright: -2,
@@ -1402,6 +1407,28 @@
       }
     });
 
+    async function loadDefaultMidiOnStartup() {
+      if (window.location.protocol === 'file:') {
+        showToast('Default MIDI autoload needs an HTTP server.');
+        return;
+      }
+
+      for (const path of DEFAULT_STARTUP_MIDI_PATHS) {
+        try {
+          const response = await fetch(path, { cache: 'no-store' });
+          if (!response.ok) continue;
+          const arrayBuffer = await response.arrayBuffer();
+          const title = path.split('/').pop() || path;
+          parseMidi(arrayBuffer, title, false);
+          return;
+        } catch (error) {
+          console.warn(`Failed loading startup MIDI from ${path}.`, error);
+        }
+      }
+
+      showToast('Default MIDI not found. Use folder icon to load one.');
+    }
+
     playBtn.addEventListener('click', () => {
       if (Tone.Transport.state === 'started') {
         pausePlayback();
@@ -1771,3 +1798,4 @@
     });
 
     setControlsEnabled(false);
+    loadDefaultMidiOnStartup();

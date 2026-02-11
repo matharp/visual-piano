@@ -3,6 +3,7 @@
 Built using Codex CLI. A Synthesia-style MIDI practice app. Load a `.mid` file, watch note fall visualization aligned to an 88-key keyboard, and practice with loop tools.
 
 ## Features
+- Auto-loads `assets/default.mid` on startup (without autoplay, when served over HTTP)
 - MIDI load via file picker or drag-and-drop
 - Falling-note highway synced to keyboard playback
 - Loop workflow with marks, loop toggle, and editable loop timestamps
@@ -18,6 +19,7 @@ Built using Codex CLI. A Synthesia-style MIDI practice app. Load a `.mid` file, 
    `http://127.0.0.1:4173`
 
 ## Project Structure
+- `assets/default.mid`: default startup MIDI file.
 - `index.html`: semantic page markup and CDN script includes.
 - `styles/main.css`: all styles (layout, controls, responsive behavior).
 - `js/main.js`: app runtime orchestration (state, rendering, UI events, transport).
