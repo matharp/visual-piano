@@ -1689,6 +1689,19 @@
       event.stopPropagation();
     });
 
+    [timeReadout, metronomeIndicator].forEach((el) => {
+      el.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+      });
+      el.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+      el.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+    });
+
 
     const stopSeekDrag = () => {
       seekIsDragging = false;
