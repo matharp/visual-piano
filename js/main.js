@@ -60,6 +60,7 @@
       major: [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],
       minor: [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
     };
+    const PITCH_CLASS_NAMES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
 
     function normalizeTempoMap(entries) {
       const map = entries
@@ -175,33 +176,75 @@
       return `${letter}${accidental}`;
     }
 
+    function pitchClassToKeyName(pitchClass) {
+      return PITCH_CLASS_NAMES[((pitchClass % 12) + 12) % 12];
+    }
+
     function inferKeyFromNotes(noteList) {
       if (!noteList.length) return null;
       const histogram = new Array(12).fill(0);
+      const bassHistogram = new Array(12).fill(0);
+      const endingHistogram = new Array(12).fill(0);
+      const totalTime = noteList.reduce((max, note) => Math.max(max, note.time + note.duration), 0);
+      const endingStart = totalTime * 0.86;
       noteList.forEach((note) => {
         const pitch = note.midi % 12;
-        const weight = Math.max(0.01, note.duration) * (note.velocity || 0.7);
+        const durationWeight = Math.max(0.02, note.duration);
+        const velocityWeight = Math.max(0.2, note.velocity || 0.7);
+        const weight = durationWeight * velocityWeight;
         histogram[pitch] += weight;
+        if (note.midi < 60) {
+          bassHistogram[pitch] += weight * 1.45;
+        }
+        if (note.time >= endingStart) {
+          endingHistogram[pitch] += weight * 1.7;
+        }
       });
 
-      function correlate(profile, shift) {
-        let sum = 0;
-        for (let i = 0; i < 12; i++) {
-          sum += histogram[i] * profile[(i + shift) % 12];
+      function normalize(vec) {
+        const sum = vec.reduce((acc, value) => acc + value, 0) || 1;
+        return vec.map((value) => value / sum);
+      }
+
+      function rotate(arr, shift) {
+        const out = new Array(arr.length);
+        for (let i = 0; i < arr.length; i++) {
+          out[i] = arr[(i + shift + arr.length) % arr.length];
         }
+        return out;
+      }
+
+      function dot(a, b) {
+        let sum = 0;
+        for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
         return sum;
       }
 
-      let best = { score: -Infinity, key: 'C', scale: 'major' };
-      const keys = Object.keys(keyToPitch);
-      keys.forEach((keyName) => {
-        const root = keyToPitch[keyName];
-        const majorScore = correlate(keyProfiles.major, (12 - root) % 12);
-        const minorScore = correlate(keyProfiles.minor, (12 - root) % 12);
-        if (majorScore > best.score) best = { score: majorScore, key: keyName, scale: 'major' };
-        if (minorScore > best.score) best = { score: minorScore, key: keyName, scale: 'minor' };
-      });
+      const histNorm = normalize(histogram);
+      const bassNorm = normalize(bassHistogram);
+      const endingNorm = normalize(endingHistogram);
+      const majorProfile = normalize(keyProfiles.major);
+      const minorProfile = normalize(keyProfiles.minor);
 
+      const candidates = [];
+      for (let root = 0; root < 12; root++) {
+        const majorFit = dot(histNorm, rotate(majorProfile, 12 - root));
+        const minorFit = dot(histNorm, rotate(minorProfile, 12 - root));
+        const tonicSalience = histNorm[root] * 0.14 + bassNorm[root] * 0.28 + endingNorm[root] * 0.36;
+        candidates.push({
+          score: majorFit + tonicSalience,
+          key: pitchClassToKeyName(root),
+          scale: 'major'
+        });
+        candidates.push({
+          score: minorFit + tonicSalience,
+          key: pitchClassToKeyName(root),
+          scale: 'minor'
+        });
+      }
+
+      candidates.sort((a, b) => b.score - a.score);
+      const best = candidates[0];
       return best;
     }
 
