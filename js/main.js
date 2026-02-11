@@ -369,6 +369,8 @@
     let paletteIndex = 2;
 
     let scheduledPart = null;
+    let metronomePart = null;
+    let metronomeFlashTimer = null;
     const midiFreqCache = new Array(128);
 
     let master = null;
@@ -786,7 +788,6 @@
         Tone.Transport.seconds = 0;
         lastIndex = 0;
         lastTime = 0;
-        lastBeat = -1;
 
         updateNoteGeometry();
         gridEnabled = true;
@@ -1212,6 +1213,26 @@
         scheduledPart.dispose();
         scheduledPart = null;
       }
+      if (metronomePart) {
+        metronomePart.dispose();
+        metronomePart = null;
+      }
+      if (metronomeFlashTimer) {
+        clearTimeout(metronomeFlashTimer);
+        metronomeFlashTimer = null;
+      }
+      metronomeIndicator.classList.remove('flash');
+    }
+
+    function flashMetronome() {
+      metronomeIndicator.classList.add('flash');
+      if (metronomeFlashTimer) {
+        clearTimeout(metronomeFlashTimer);
+      }
+      metronomeFlashTimer = setTimeout(() => {
+        metronomeIndicator.classList.remove('flash');
+        metronomeFlashTimer = null;
+      }, 60);
     }
 
     function buildPart() {
@@ -1224,6 +1245,13 @@
         Tone.Draw.schedule(() => removeActive(note.midi), time + scaledDuration);
       }, renderNotes.map((n) => [n.time / playbackSpeed, n]));
       scheduledPart.start(0);
+
+      if (gridLines.length) {
+        metronomePart = new Tone.Part((time) => {
+          Tone.Draw.schedule(() => flashMetronome(), time);
+        }, gridLines.map((line) => [line.time / playbackSpeed, line]));
+        metronomePart.start(0);
+      }
     }
 
     function isNoteInScale(midiNote) {
@@ -1376,7 +1404,7 @@
       updateLoopUI();
       lastIndex = lowerBound(targetSongTime, renderNotes);
       lastTime = targetSongTime;
-      lastBeat = -1;
+      metronomeIndicator.classList.remove('flash');
       if (synth) {
         synth.releaseAll();
       }
@@ -1561,7 +1589,6 @@
     const UI_UPDATE_INTERVAL = 500;
     let lastFrame = 0;
     let lastUiUpdate = 0;
-    let lastBeat = -1;
 
     function animationLoop(timestamp) {
       if (document.visibilityState === 'hidden') {
@@ -1580,15 +1607,7 @@
           updateUI();
           lastUiUpdate = timestamp;
         }
-        if (isPlaying && gridLines.length) {
-          const songSeconds = (Tone.Transport.seconds || 0) * playbackSpeed;
-          const beatIndex = Math.max(0, lowerBoundGridLines(songSeconds) - 1);
-          if (beatIndex !== lastBeat) {
-            lastBeat = beatIndex;
-            metronomeIndicator.classList.add('flash');
-            setTimeout(() => metronomeIndicator.classList.remove('flash'), 60);
-          }
-        } else {
+        if (!isPlaying) {
           metronomeIndicator.classList.remove('flash');
         }
         lastFrame = timestamp;
