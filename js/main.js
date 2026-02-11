@@ -863,30 +863,25 @@
 
     function computeSplitPoint(notesList) {
       if (!notesList.length) return 60;
-      let c1 = 40;
-      let c2 = 72;
-      for (let iter = 0; iter < 8; iter++) {
-        let s1 = 0;
-        let s2 = 0;
-        let n1 = 0;
-        let n2 = 0;
-        for (const note of notesList) {
-          const d1 = Math.abs(note.midi - c1);
-          const d2 = Math.abs(note.midi - c2);
-          if (d1 <= d2) {
-            s1 += note.midi;
-            n1++;
-          } else {
-            s2 += note.midi;
-            n2++;
-          }
-        }
-        if (n1) c1 = s1 / n1;
-        if (n2) c2 = s2 / n2;
+      const sorted = notesList.map((note) => note.midi).sort((a, b) => a - b);
+      const quantile = (p) => {
+        const idx = Math.max(0, Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p)));
+        return sorted[idx];
+      };
+
+      const q25 = quantile(0.25);
+      const q35 = quantile(0.35);
+      const q50 = quantile(0.5);
+      const q65 = quantile(0.65);
+      const q75 = quantile(0.75);
+      const spread = q75 - q25;
+
+      let split = (q35 + q65) / 2;
+      if (spread < 8) {
+        split = q50;
       }
-      const low = Math.min(c1, c2);
-      const high = Math.max(c1, c2);
-      return (low + high) / 2;
+
+      return Math.max(54, Math.min(70, split));
     }
 
     function assignHands(notesList) {
@@ -896,40 +891,87 @@
       }
 
       splitPoint = computeSplitPoint(notesList);
-
-      const chordWindow = 0.06;
-      const chordSpan = 10;
+      const grouped = [];
+      const groupWindow = 0.05;
       let i = 0;
-
       while (i < notesList.length) {
         const startTime = notesList[i].time;
         const group = [];
         let j = i;
-        while (j < notesList.length && notesList[j].time <= startTime + chordWindow) {
+        while (j < notesList.length && notesList[j].time <= startTime + groupWindow) {
           group.push(notesList[j]);
           j++;
         }
+        group.sort((a, b) => a.midi - b.midi);
+        grouped.push(group);
+        i = j;
+      }
 
-        if (group.length >= 3) {
-          const pitches = group.map((n) => n.midi).sort((a, b) => a - b);
-          const span = pitches[pitches.length - 1] - pitches[0];
-          if (span <= chordSpan) {
-            const median = pitches[Math.floor(pitches.length / 2)];
-            const hand = median < splitPoint ? 'left' : 'right';
-            group.forEach((n) => {
-              n.hand = hand;
-            });
-            i = j;
-            continue;
+      let leftCenter = splitPoint - 9;
+      let rightCenter = splitPoint + 9;
+
+      grouped.forEach((group) => {
+        const size = group.length;
+        let bestCut = 0;
+        let bestCost = Infinity;
+
+        for (let cut = 0; cut <= size; cut++) {
+          let cost = 0;
+          let hasLeft = false;
+          let hasRight = false;
+
+          for (let idx = 0; idx < size; idx++) {
+            const midi = group[idx].midi;
+            if (idx < cut) {
+              hasLeft = true;
+              cost += Math.abs(midi - leftCenter) * 0.2;
+              cost += Math.max(0, midi - (splitPoint + 2)) * 1.9;
+            } else {
+              hasRight = true;
+              cost += Math.abs(midi - rightCenter) * 0.2;
+              cost += Math.max(0, (splitPoint - 2) - midi) * 1.9;
+            }
+          }
+
+          if (size >= 2) {
+            const span = group[size - 1].midi - group[0].midi;
+            if (span >= 8 && (!hasLeft || !hasRight)) {
+              cost += 10;
+            }
+          }
+
+          if (cost < bestCost) {
+            bestCost = cost;
+            bestCut = cut;
           }
         }
 
-        group.forEach((n) => {
-          n.hand = n.midi < splitPoint ? 'left' : 'right';
-        });
+        let leftSum = 0;
+        let rightSum = 0;
+        let leftCount = 0;
+        let rightCount = 0;
+        for (let idx = 0; idx < size; idx++) {
+          const note = group[idx];
+          if (idx < bestCut) {
+            note.hand = 'left';
+            leftSum += note.midi;
+            leftCount++;
+          } else {
+            note.hand = 'right';
+            rightSum += note.midi;
+            rightCount++;
+          }
+        }
 
-        i = j;
-      }
+        if (leftCount) {
+          const leftMean = leftSum / leftCount;
+          leftCenter = leftCenter * 0.84 + leftMean * 0.16;
+        }
+        if (rightCount) {
+          const rightMean = rightSum / rightCount;
+          rightCenter = rightCenter * 0.84 + rightMean * 0.16;
+        }
+      });
     }
 
     function rebuildHandCaches() {
